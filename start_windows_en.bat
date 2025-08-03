@@ -1,13 +1,15 @@
+REM =============================================
 REM VoucherLite Startup Script - Windows Version
 REM Function: Quick start VoucherLite Electronic Voucher Management System
 REM Author: Jinchao Fashion Supply Chain
 REM Version: 2.0
+REM =============================================
 
 @echo off
 REM Turn off command echo for cleaner output
 
 chcp 65001 >nul
-REM Set console encoding to UTF-8 for proper display
+REM Set console encoding to UTF-8 for proper character display
 
 title VoucherLite Startup Script
 REM Set console window title
@@ -25,7 +27,7 @@ REM Activate virtual environment to ensure correct Python and dependencies
 
 if errorlevel 1 (
     echo [ERROR] Virtual environment activation failed!
-    echo Please run install_windows_en.bat first to set up environment
+    echo Please run install_windows.bat first to set up environment
     pause
     exit /b 1
 )
@@ -41,70 +43,70 @@ REM Set Python input/output encoding to UTF-8 to avoid character garbling
 REM =============================================
 REM Step 3: Display system information
 REM =============================================
-echo [3] Checking system files...
-REM Check if essential files exist
+echo [3] Displaying Python version...
+python --version
+REM Display current Python version information
+
+echo [4] Displaying current directory...
+echo Current directory: %CD%
+REM Display the current directory where script is running
+
+REM =============================================
+REM Step 4: Check required files
+REM =============================================
+echo [5] Checking critical files...
 if exist "app.py" (echo [OK] app.py exists) else (echo [ERROR] app.py not found & goto :error)
 if exist "config.py" (echo [OK] config.py exists) else (echo [ERROR] config.py not found & goto :error)
 if exist "index.html" (echo [OK] index.html exists) else (echo [ERROR] index.html not found & goto :error)
+REM Check if Flask application, configuration file, and frontend page exist
+
+echo.
 
 REM =============================================
-REM Step 4: Display network configuration
+REM Step 5: Start VoucherLite application server
 REM =============================================
-echo [4] Getting network configuration...
-echo Running config.py to detect network settings...
-python config.py
-if errorlevel 1 (
-    echo [WARN] Network configuration detection failed
-    echo This may affect mobile access functionality
-)
-
-REM =============================================
-REM Step 5: Start Flask application
-REM =============================================
-echo.
-echo ===== Starting VoucherLite Server =====
-echo.
-echo Usage instructions:
-echo - Press Ctrl+C to stop the service
-echo - Ensure phone and computer are on the same WiFi network
-echo - System will automatically detect internal IP for mobile access
-echo.
-echo Starting Flask application server...
+echo [6] Starting VoucherLite application...
+echo If errors occur, detailed information will be displayed
+echo Press Ctrl+C to stop the server
 echo.
 
-REM Start Flask application
+REM Get local IP address and automatically open browser
+echo [STARTUP] Getting local IP address...
+REM Read HOST configuration from config.py file to get local IP address
+for /f "tokens=2 delims=:" %%a in ('python -c "from config import HOST; print('IP:' + HOST)"') do set LOCAL_IP=%%a
+set LOCAL_IP=%LOCAL_IP: =%
+REM Remove spaces from IP address
+
+echo [INFO] Local access address: http://%LOCAL_IP%:5001
+echo [BROWSER] Browser will open automatically in 3 seconds...
+
+REM Open browser automatically after 3 seconds delay to display management interface
+REM Use start command to launch browser in background without blocking Flask server startup
+start "" cmd /c "timeout /t 3 >nul & start http://%LOCAL_IP%:5001"
+
+REM Start Flask application server
+REM This is the main server process that will run until user presses Ctrl+C to stop
 python app.py
 
-REM Check startup result
-if errorlevel 1 (
-    echo.
-    echo [ERROR] Service startup failed!
-    echo Possible causes:
-    echo   1. Python environment issue
-    echo   2. Missing dependencies
-    echo   3. Port conflict
-    echo   4. Application code error
-    echo.
-    echo Please try running install_windows_en.bat to reinstall
-    pause
-    exit /b 1
-)
-
+REM =============================================
+REM Cleanup and exit
+REM =============================================
 echo.
-echo ===== Service Stopped =====
-echo VoucherLite server has been stopped
-echo To restart, double-click this script again
+echo Server has stopped
 pause
-exit /b 0
+REM Pause to wait for user keypress to prevent window from closing immediately
+goto :end
 
+REM =============================================
+REM Error handling
+REM =============================================
 :error
+echo.
 echo [ERROR] Startup failed: Missing required files
-echo.
-echo Please ensure all files are in the correct location:
-echo - app.py (main application)
-echo - config.py (configuration script)  
-echo - index.html (web interface)
-echo.
-echo If files are missing, please re-download the complete project
+echo Please ensure you are running this script in the correct project directory
+echo Or run install_windows.bat to reinstall
 pause
 exit /b 1
+
+:end
+REM Script ends normally
