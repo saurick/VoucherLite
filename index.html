@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>优惠凭证管理系统</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/element-plus/dist/index.full.js"></script>
+    <!-- 真正的二维码生成器 -->
+    <script src="/static/js/qrcode-generator.js"></script>
+    <script>
+        console.log('真正的二维码生成器已加载');
+    </script>
+  <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+    <style>
+        body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center; margin-bottom: 20px; }
+        .stats { display: flex; gap: 20px; margin-bottom: 20px; }
+        .stat-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center; flex: 1; }
+        .stat-number { font-size: 24px; font-weight: bold; color: #409EFF; }
+        .stat-label { color: #666; margin-top: 5px; }
+        .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .table-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+        .empty-state { text-align: center; padding: 50px; color: #666; }
+        .empty-state h3 { color: #999; margin-bottom: 10px; }
+        .brand-info { margin-top: 15px; }
+        .brand-name { 
+            background: rgba(255, 255, 255, 0.2); 
+            padding: 8px 16px; 
+            border-radius: 20px; 
+            font-size: 16px; 
+            font-weight: bold; 
+            color: #fff; 
+            display: inline-block;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+        <div class="header">
+            <h1>{{ title }}</h1>
+            <p>电子票据生成、验证、核销一体化管理</p>
+            <div class="brand-info">
+                <span class="brand-name">🏢 金潮男装供应链</span>
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number">{{ totalVouchers }}</div>
+                <div class="stat-label">总凭证数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ unusedVouchers }}</div>
+                <div class="stat-label">未使用</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ usedVouchers }}</div>
+                <div class="stat-label">已使用</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">¥{{ totalAmount }}</div>
+                <div class="stat-label">总金额</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">¥{{ usedAmount }}</div>
+                <div class="stat-label">已使用金额</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">¥{{ unusedAmount }}</div>
+                <div class="stat-label">未使用金额</div>
+            </div>
+        </div>
+
+        <div class="toolbar">
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <el-button type="primary" @click="showAdd = true">➕ 新增凭证</el-button>
+                <el-button @click="refreshData">🔄 刷新数据</el-button>
+                <el-button type="success" @click="exportExcel">📤 导出Excel</el-button>
+                <el-button type="warning" @click="$refs.fileInput.click()">📥 导入Excel</el-button>
+                <input 
+                    ref="fileInput" 
+                    type="file" 
+                    accept=".xlsx,.xls" 
+                    style="display: none;" 
+                    @change="importExcel">
+            </div>
+            <div>
+                <el-input v-model="searchText" placeholder="搜索..." style="width: 250px;" clearable></el-input>
+            </div>
+        </div>
+
+        <!-- 空数据状态 -->
+        <div v-if="!loading && filteredVouchers.length === 0" class="empty-state">
+            <h3>📝 暂无凭证数据</h3>
+            <p v-if="searchText">没有找到匹配 "{{ searchText }}" 的凭证记录</p>
+            <p v-else>系统中还没有任何凭证记录</p>
+            <el-button type="primary" @click="showAdd = true" v-if="!searchText">立即添加凭证</el-button>
+            <el-button @click="searchText = ''" v-if="searchText">清除搜索</el-button>
+        </div>
+
+        <!-- 空数据状态 -->
+        <!-- <div v-if="!loading && filteredVouchers.length === 0" style="text-align: center; padding: 50px; color: #666;">
+            <h3 style="color: #999; margin-bottom: 10px;">📝 暂无凭证数据</h3>
+            <p v-if="searchText">没有找到匹配 "{{ searchText }}" 的凭证记录</p>
+            <p v-else>系统中还没有任何凭证记录</p>
+            <el-button type="primary" @click="showAdd = true" v-if="!searchText">立即添加凭证</el-button>
+            <el-button @click="searchText = ''" v-if="searchText">清除搜索</el-button>
+        </div> -->
+
+        <!-- 数据表格 -->
+        <el-table 
+            v-if="!loading && filteredVouchers.length > 0"
+            :data="paginatedVouchers" 
+            style="width: 100%;" 
+            v-loading="loading"
+            height="600">
+            <el-table-column prop="voucher_id" label="凭证号" width="150" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="customer" label="客户" width="120" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="sku" label="款号" width="100" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="qty" label="件数" width="80" align="center"></el-table-column>
+            <el-table-column prop="price" label="金额" width="100" align="right">
+                <template #default="scope">¥{{ scope.row.price }}</template>
+            </el-table-column>
+            <el-table-column prop="status" label="状态" width="100" align="center">
+                <template #default="scope">
+                    <el-tag :type="scope.row.status === '已使用' ? 'danger' : 'success'">
+                        {{ scope.row.status }}
+                    </el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column prop="used_date" label="使用时间" width="150" align="center">
+                <template #default="scope">
+                    <span v-if="scope.row.status === '已使用' && scope.row.used_date">
+                        {{ scope.row.used_date }}
+                    </span>
+                    <span v-else style="color: #ccc;">-</span>
+                </template>
+            </el-table-column>
+            <el-table-column label="操作" width="320" align="center">
+          <template #default="scope">
+                    <el-button size="small" @click="editVoucher(scope.row)">✏️ 编辑</el-button>
+                    <el-button size="small" type="danger" @click="confirmDelete(scope.row.voucher_id)">🗑️ 删除</el-button>
+                    <el-button 
+                        size="small" 
+                        :type="scope.row.status === '未使用' ? 'warning' : 'info'"
+                        :disabled="scope.row.status === '已使用'"
+                        @click="toggleStatus(scope.row)">
+                        {{ scope.row.status === '未使用' ? '✅ 核销' : '♻️ 已核销' }}
+                    </el-button>
+                    <el-button size="small" type="success" @click="showQRCode(scope.row)">📱 二维码</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+        <!-- 分页组件 -->
+        <div class="table-footer" v-if="!loading && filteredVouchers.length > 0">
+            <div>
+                共 {{ filteredVouchers.length }} 条记录，当前第 {{ currentPage }} / {{ totalPages }} 页
+            </div>
+            <el-pagination
+                v-model:current-page="currentPage"
+                v-model:page-size="pageSize"
+                :page-sizes="[50, 100, 200, 500]"
+                :total="filteredVouchers.length"
+                layout="total, sizes, prev, pager, next, jumper"
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange">
+            </el-pagination>
+        </div>
+
+        <!-- 新增凭证弹窗 -->
+        <el-dialog v-model="showAdd" title="新增凭证" width="500px">
+            <el-form :model="newVoucher" label-width="80px">
+                <el-form-item label="客户姓名">
+                    <el-input v-model="newVoucher.customer" placeholder="请输入客户姓名"></el-input>
+                </el-form-item>
+                <el-form-item label="商品款号">
+                    <el-input v-model="newVoucher.sku" placeholder="请输入商品款号"></el-input>
+                </el-form-item>
+                <el-form-item label="件数">
+                    <el-input-number v-model="newVoucher.qty" :min="1" style="width: 100%;"></el-input-number>
+                </el-form-item>
+                <el-form-item label="金额">
+                    <el-input-number v-model="newVoucher.price" :min="0" :precision="2" style="width: 100%;"></el-input-number>
+                </el-form-item>
+            </el-form>
+            <template #footer>
+                <el-button @click="showAdd = false">取消</el-button>
+                <el-button type="primary" @click="addVoucher" :loading="saving">保存</el-button>
+            </template>
+        </el-dialog>
+
+        <!-- 编辑凭证弹窗 -->
+        <el-dialog v-model="showEdit" title="编辑凭证" width="500px">
+            <el-form :model="editingVoucher" label-width="80px">
+                <el-form-item label="凭证号">
+                    <el-input v-model="editingVoucher.voucher_id" disabled></el-input>
+                </el-form-item>
+                <el-form-item label="客户姓名">
+                    <el-input v-model="editingVoucher.customer" placeholder="请输入客户姓名"></el-input>
+                </el-form-item>
+                <el-form-item label="商品款号">
+                    <el-input v-model="editingVoucher.sku" placeholder="请输入商品款号"></el-input>
+                </el-form-item>
+                <el-form-item label="件数">
+                    <el-input-number v-model="editingVoucher.qty" :min="1" style="width: 100%;"></el-input-number>
+                </el-form-item>
+                <el-form-item label="金额">
+                    <el-input-number v-model="editingVoucher.price" :min="0" :precision="2" style="width: 100%;"></el-input-number>
+                </el-form-item>
+                <el-form-item label="状态">
+                    <el-radio-group v-model="editingVoucher.status">
+                        <el-radio label="未使用">未使用</el-radio>
+                        <el-radio label="已使用">已使用</el-radio>
+                    </el-radio-group>
+                </el-form-item>
+            </el-form>
+            <template #footer>
+                <el-button @click="showEdit = false">取消</el-button>
+                <el-button type="primary" @click="updateVoucher" :loading="saving">保存</el-button>
+            </template>
+      </el-dialog>
+
+        <!-- 凭证二维码与票据弹窗 -->
+        <el-dialog v-model="showQR" title="凭证二维码与票据" width="700px">
+            <div style="text-align: center;">
+                <h4>{{ currentVoucher.customer }} - {{ currentVoucher.sku }}</h4>
+                <p><strong>凭证号：</strong>{{ currentVoucher.voucher_id }}</p>
+                <p><strong>验证链接：</strong>{{ verifyLink }}</p>
+                
+                <div style="margin: 20px 0;" id="qr-container">
+                    <canvas 
+                        ref="qrCanvas" 
+                        width="200" 
+                        height="200" 
+                        style="display: none;">
+                    </canvas>
+                </div>
+                
+                <div style="margin: 20px 0;">
+                    <el-button type="primary" @click="copyLink">📋 复制链接</el-button>
+                    <el-button type="success" @click="downloadQR">⬇️ 下载二维码</el-button>
+                    <el-button type="warning" @click="generateVoucherImage" :loading="generatingImage">🖼️ 生成票据图片</el-button>
+                </div>
+
+                <!-- 票据图片预览 -->
+                <div v-if="voucherImageUrl" style="margin-top: 20px;">
+                    <h4>票据图片预览</h4>
+                    <img :src="voucherImageUrl" alt="凭证图片" style="max-width: 100%; border: 1px solid #ddd; margin: 10px 0;">
+                    <div>
+                        <el-button @click="downloadVoucherImage">⬇️ 下载票据图片</el-button>
+                    </div>
+                </div>
+            </div>
+        </el-dialog>
+</div>
+
+<script>
+        const { createApp, ref, computed, onMounted, nextTick } = Vue
+        
+        const app = createApp({
+  setup() {
+                // 数据
+    const vouchers = ref([])
+                const loading = ref(false)
+                const saving = ref(false)
+    const showAdd = ref(false)
+                const showEdit = ref(false)
+                const showQR = ref(false)
+                const searchText = ref('')
+                const title = ref('优惠凭证管理系统')
+                const currentPage = ref(1)
+                const pageSize = ref(100)
+                const currentVoucher = ref({})
+                const verifyLink = ref('')
+                const qrCanvas = ref(null)
+                const fileInput = ref(null)
+                const voucherImageUrl = ref('')
+                const generatingImage = ref(false)
+                
+                const newVoucher = ref({
+                    customer: '',
+                    sku: '',
+                    qty: 1,
+                    price: 0
+                })
+
+                const editingVoucher = ref({})
+                
+                // 安全的消息提示函数
+                const safeMessage = {
+                    success: (msg) => {
+                        try {
+                            if (typeof ElMessage !== 'undefined') {
+                                ElMessage.success(msg)
+                            } else {
+                                console.log('✅ Success:', msg)
+                                showToast(msg, 'success')
+                            }
+                        } catch (e) {
+                            console.log('✅ Success:', msg)
+                            showToast(msg, 'success')
+                        }
+                    },
+                    error: (msg) => {
+                        try {
+                            if (typeof ElMessage !== 'undefined') {
+                                ElMessage.error(msg)
+                            } else {
+                                console.error('❌ Error:', msg)
+                                showToast(msg, 'error')
+                            }
+                        } catch (e) {
+                            console.error('❌ Error:', msg)
+                            showToast(msg, 'error')
+                        }
+                    },
+                    warning: (msg) => {
+                        try {
+                            if (typeof ElMessage !== 'undefined') {
+                                ElMessage.warning(msg)
+                            } else {
+                                console.warn('⚠️ Warning:', msg)
+                                showToast(msg, 'warning')
+                            }
+                        } catch (e) {
+                            console.warn('⚠️ Warning:', msg)
+                            showToast(msg, 'warning')
+                        }
+                    }
+                }
+
+                // 简单的toast实现（降级方案）
+                const showToast = (message, type = 'info') => {
+                    const toast = document.createElement('div')
+                    const colors = {
+                        success: '#67C23A',
+                        error: '#F56C6C',
+                        warning: '#E6A23C',
+                        info: '#909399'
+                    }
+                    
+                    toast.style.cssText = `
+                        position: fixed;
+                        top: 20px;
+                        right: 20px;
+                        background: ${colors[type] || colors.info};
+                        color: white;
+                        padding: 12px 20px;
+                        border-radius: 4px;
+                        z-index: 9999;
+                        font-size: 14px;
+                        box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+                        transition: all 0.3s ease;
+                        max-width: 300px;
+                        word-break: break-word;
+                    `
+                    
+                    toast.textContent = message
+                    document.body.appendChild(toast)
+                    
+                    // 3秒后自动消失
+                    setTimeout(() => {
+                        if (toast.parentNode) {
+                            toast.style.opacity = '0'
+                            toast.style.transform = 'translateX(100%)'
+                            setTimeout(() => {
+                                if (toast.parentNode) {
+                                    document.body.removeChild(toast)
+                                }
+                            }, 300)
+                        }
+                    }, 3000)
+                }
+                
+                // 计算属性
+                const filteredVouchers = computed(() => {
+                    if (!searchText.value) return vouchers.value || []
+                    const search = searchText.value.toLowerCase()
+                    return (vouchers.value || []).filter(v => 
+                        (v.customer || '').toLowerCase().includes(search) ||
+                        (v.sku || '').toLowerCase().includes(search) ||
+                        (v.voucher_id || '').toLowerCase().includes(search)
+                    )
+                })
+                
+                const totalPages = computed(() => Math.ceil(filteredVouchers.value.length / pageSize.value))
+                
+                const paginatedVouchers = computed(() => {
+                    const start = (currentPage.value - 1) * pageSize.value
+                    const end = start + pageSize.value
+                    return filteredVouchers.value.slice(start, end)
+                })
+                
+                const totalVouchers = computed(() => (vouchers.value || []).length)
+                const unusedVouchers = computed(() => (vouchers.value || []).filter(v => v.status === '未使用').length)
+                const usedVouchers = computed(() => (vouchers.value || []).filter(v => v.status === '已使用').length)
+                const totalAmount = computed(() => (vouchers.value || []).reduce((sum, v) => sum + Number(v.price || 0), 0).toFixed(2))
+                const usedAmount = computed(() => (vouchers.value || []).filter(v => v.status === '已使用').reduce((sum, v) => sum + Number(v.price || 0), 0).toFixed(2))
+                const unusedAmount = computed(() => (vouchers.value || []).filter(v => v.status === '未使用').reduce((sum, v) => sum + Number(v.price || 0), 0).toFixed(2))
+                
+                // 方法
+                const loadData = async () => {
+                    loading.value = true
+                    try {
+                        const response = await fetch('/api/list')
+                        if (response.ok) {
+                            const data = await response.json()
+                            vouchers.value = Array.isArray(data) ? data : []
+                        } else {
+                            const errorData = await response.json().catch(() => ({}))
+                            safeMessage.error('加载数据失败: ' + (errorData.error || '服务器错误'))
+                            vouchers.value = []
+                        }
+                    } catch (error) {
+                        safeMessage.error('网络错误: ' + error.message)
+                        vouchers.value = []
+                        console.error('加载数据错误:', error)
+                    } finally {
+                        loading.value = false
+                    }
+                }
+                
+                const refreshData = async () => {
+                    try {
+                        await loadData()
+                        safeMessage.success('数据刷新成功')
+                    } catch (error) {
+                        safeMessage.error('数据刷新失败: ' + error.message)
+                    }
+                }
+                
+                const addVoucher = async () => {
+                    if (!newVoucher.value.customer || !newVoucher.value.sku) {
+                        safeMessage.error('请填写客户和款号')
+                        return
+                    }
+                    
+                    saving.value = true
+                    try {
+                        const response = await fetch('/api/add', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                ...newVoucher.value,
+                                voucher_id: `V${Date.now()}`
+                            })
+                        })
+                        
+                        if (response.ok) {
+                            showAdd.value = false
+                            newVoucher.value = { customer: '', sku: '', qty: 1, price: 0 }
+                            await loadData()
+                            safeMessage.success('凭证添加成功')
+                        } else {
+                            const errorData = await response.json().catch(() => ({}))
+                            safeMessage.error('添加失败: ' + (errorData.error || '服务器错误'))
+                        }
+                    } catch (error) {
+                        console.error('添加错误:', error)
+                        safeMessage.error('网络错误: ' + error.message)
+                    } finally {
+                        saving.value = false
+                    }
+                }
+                
+                const editVoucher = (voucher) => {
+                    editingVoucher.value = { ...voucher }
+                    showEdit.value = true
+                }
+
+                const updateVoucher = async () => {
+                    if (!editingVoucher.value.customer || !editingVoucher.value.sku) {
+                        safeMessage.error('请填写客户和款号')
+                        return
+                    }
+                    
+                    saving.value = true
+                    try {
+                        const response = await fetch(`/api/update/${editingVoucher.value.voucher_id}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(editingVoucher.value)
+                        })
+                        
+                        if (response.ok) {
+                            showEdit.value = false
+                            await loadData()
+                            safeMessage.success('凭证更新成功')
+                        } else {
+                            const errorData = await response.json().catch(() => ({}))
+                            safeMessage.error('更新失败: ' + (errorData.error || '服务器错误'))
+                        }
+                    } catch (error) {
+                        console.error('更新错误:', error)
+                        safeMessage.error('网络错误: ' + error.message)
+                    } finally {
+                        saving.value = false
+                    }
+                }
+                
+                const confirmDelete = async (voucherId) => {
+                    try {
+                        // 尝试使用ElMessageBox，如果失败则降级到原生confirm
+                        let confirmed = false
+                        try {
+                            if (typeof ElMessageBox !== 'undefined') {
+                                await ElMessageBox.confirm(
+                                    '确定要删除这个凭证吗？删除后无法恢复！',
+                                    '确认删除',
+                                    {
+                                        confirmButtonText: '确定',
+                                        cancelButtonText: '取消',
+                                        type: 'warning',
+                                    }
+                                )
+                                confirmed = true
+                            } else {
+                                // 降级处理
+                                confirmed = confirm('确定要删除这个凭证吗？删除后无法恢复！')
+                            }
+                        } catch (confirmError) {
+                            if (confirmError === 'cancel') {
+                                return  // 用户取消
+                            }
+                            // ElMessageBox失败，使用原生confirm作为降级
+                            confirmed = confirm('确定要删除这个凭证吗？删除后无法恢复！')
+                        }
+                        
+                        if (confirmed) {
+                            await deleteVoucher(voucherId)
+                        }
+                    } catch (error) {
+                        console.error('删除确认错误:', error)
+                        safeMessage.error('删除操作失败: ' + error.message)
+                    }
+                }
+
+                const deleteVoucher = async (voucherId) => {
+                    try {
+                        const response = await fetch(`/api/delete/${voucherId}`, { method: 'POST' })
+                        if (response.ok) {
+                            await loadData()
+                            safeMessage.success('删除成功')
+                        } else {
+                            const errorData = await response.json().catch(() => ({}))
+                            safeMessage.error('删除失败: ' + (errorData.error || '服务器错误'))
+                        }
+                    } catch (error) {
+                        console.error('删除错误:', error)
+                        safeMessage.error('网络错误: ' + error.message)
+                    }
+                }
+                
+                const toggleStatus = async (voucher) => {
+                    if (voucher.status === '已使用') {
+                        safeMessage.warning('该凭证已经使用过了')
+                        return
+                    }
+                    
+                    try {
+                        // 尝试使用ElMessageBox，如果失败则降级到原生confirm
+                        let confirmed = false
+                        try {
+                            if (typeof ElMessageBox !== 'undefined') {
+                                await ElMessageBox.confirm(
+                                    `确定要核销凭证 ${voucher.voucher_id} 吗？`,
+                                    '确认核销',
+                                    {
+                                        confirmButtonText: '确定',
+                                        cancelButtonText: '取消',
+                                        type: 'warning',
+                                    }
+                                )
+                                confirmed = true
+                            } else {
+                                // 降级处理
+                                confirmed = confirm(`确定要核销凭证 ${voucher.voucher_id} 吗？`)
+                            }
+                        } catch (confirmError) {
+                            if (confirmError === 'cancel') {
+                                return  // 用户取消
+                            }
+                            // ElMessageBox失败，使用原生confirm作为降级
+                            confirmed = confirm(`确定要核销凭证 ${voucher.voucher_id} 吗？`)
+                        }
+                        
+                        if (!confirmed) {
+                            return  // 用户取消
+                        }
+                        
+                        const response = await fetch(`/api/use_voucher/${voucher.voucher_id}`, { 
+                            method: 'POST' 
+                        })
+                        
+                        if (response.ok) {
+                            await loadData()
+                            safeMessage.success('凭证核销成功')
+                        } else {
+                            const errorData = await response.json().catch(() => ({}))
+                            safeMessage.error('核销失败: ' + (errorData.error || '服务器错误'))
+                        }
+                    } catch (error) {
+                        console.error('核销错误:', error)
+                        safeMessage.error('核销失败: ' + error.message)
+                    }
+                }
+                
+                const showQRCode = (voucher) => {
+                    currentVoucher.value = voucher
+                    verifyLink.value = `${window.location.origin}/verify/${voucher.voucher_id}`
+                    voucherImageUrl.value = ''
+                    showQR.value = true
+                    
+                    console.log('显示二维码弹窗:', {
+                        voucher_id: voucher.voucher_id,
+                        verifyLink: verifyLink.value
+                    })
+                    
+                    // 等待DOM更新后生成二维码，多级延迟确保元素准备好
+                    nextTick(() => {
+                        setTimeout(() => {
+                            console.log('准备生成二维码，canvas存在:', !!qrCanvas.value)
+                            generateQR()
+                        }, 100)  // 增加延迟确保画布元素完全渲染
+                    })
+                }
+                
+                const generateQR = () => {
+                    console.log('生成二维码开始...', {
+                        canvas: !!qrCanvas.value,
+                        QRCode: typeof QRCode !== 'undefined',
+                        link: verifyLink.value
+                    })
+                    
+                    if (!verifyLink.value) {
+                        console.error('验证链接为空')
+                        safeMessage.error('验证链接为空')
+                        return
+                    }
+                    
+                    if (typeof QRCode === 'undefined') {
+                        console.error('QRCode库未加载')
+                        safeMessage.error('二维码库未加载')
+                        return
+                    }
+                    
+                    try {
+                        console.log('开始生成真正的二维码:', verifyLink.value)
+                        
+                        // 获取二维码容器
+                        const container = document.getElementById('qr-container') || qrCanvas.value?.parentNode
+                        
+                        if (!container) {
+                            console.error('二维码容器未找到')
+                            safeMessage.error('二维码容器未找到')
+                            return
+                        }
+                        
+                        // 清除之前的二维码
+                        const existingQR = container.querySelector('.qr-code-wrapper')
+                        if (existingQR) {
+                            existingQR.remove()
+                        }
+                        
+                        // 创建居中的二维码包装器
+                        const qrWrapper = document.createElement('div')
+                        qrWrapper.className = 'qr-code-wrapper'
+                        qrWrapper.style.cssText = `
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            width: 100%;
+                            margin: 10px 0;
+                        `
+                        
+                        // 创建二维码容器
+                        const qrDiv = document.createElement('div')
+                        qrDiv.style.cssText = `
+                            width: 200px;
+                            height: 200px;
+                            border: 2px solid #e0e0e0;
+                            border-radius: 8px;
+                            background-color: white;
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                            padding: 10px;
+                        `
+                        
+                        qrWrapper.appendChild(qrDiv)
+                        container.appendChild(qrWrapper)
+                        
+                        // 生成真正的二维码
+                        const qr = new QRCode(qrDiv, {
+                            text: verifyLink.value,
+                            width: 180,
+                            height: 180,
+                            colorDark: '#000000',
+                            colorLight: '#ffffff',
+                            correctLevel: QRCode.CorrectLevel.M
+                        })
+                        
+                        console.log('真正的二维码生成成功')
+                        safeMessage.success('二维码生成成功（可扫描）')
+                        
+                    } catch (error) {
+                        console.error('二维码生成异常:', error)
+                        safeMessage.error('二维码生成异常: ' + error.message)
+                    }
+                }
+                
+                const copyLink = () => {
+                    // 兼容性更好的复制方法
+                    if (navigator.clipboard && window.isSecureContext) {
+                        // 现代浏览器的clipboard API
+                        navigator.clipboard.writeText(verifyLink.value).then(() => {
+                            safeMessage.success('链接已复制到剪贴板')
+                        }).catch(() => {
+                            fallbackCopyTextToClipboard(verifyLink.value)
+                        })
+                    } else {
+                        // 兼容旧浏览器或非HTTPS环境
+                        fallbackCopyTextToClipboard(verifyLink.value)
+                    }
+                }
+                
+                // 备用复制方法
+                const fallbackCopyTextToClipboard = (text) => {
+                    try {
+                        const textArea = document.createElement("textarea")
+                        textArea.value = text
+                        textArea.style.position = "fixed"
+                        textArea.style.left = "-999999px"
+                        textArea.style.top = "-999999px"
+                        document.body.appendChild(textArea)
+                        textArea.focus()
+                        textArea.select()
+                        
+                        const successful = document.execCommand('copy')
+                        document.body.removeChild(textArea)
+                        
+                        if (successful) {
+                            safeMessage.success('链接已复制到剪贴板')
+                        } else {
+                            safeMessage.warning('自动复制失败，请手动复制链接')
+                        }
+                    } catch (err) {
+                        console.error('复制失败:', err)
+                        safeMessage.error('复制失败，请手动选择并复制链接')
+                    }
+                }
+                
+                const downloadQR = () => {
+                    try {
+                        // 查找生成的二维码图像
+                        const qrContainer = document.getElementById('qr-container')
+                        const qrWrapper = qrContainer?.querySelector('.qr-code-wrapper')
+                        if (!qrWrapper) {
+                            safeMessage.error('请先生成二维码')
+                            return
+                        }
+                        
+                        const qrImg = qrWrapper.querySelector('img')
+                        const qrCanvas = qrWrapper.querySelector('canvas')
+                        
+                        if (qrImg) {
+                            // 如果是img元素，直接下载
+                            const link = document.createElement('a')
+                            link.download = `qr_${currentVoucher.value.voucher_id}.png`
+                            link.href = qrImg.src
+                            link.click()
+                            safeMessage.success('二维码下载成功')
+                        } else if (qrCanvas) {
+                            // 如果是canvas元素，转换为数据URL
+                            const link = document.createElement('a')
+                            link.download = `qr_${currentVoucher.value.voucher_id}.png`
+                            link.href = qrCanvas.toDataURL()
+                            link.click()
+                            safeMessage.success('二维码下载成功')
+                        } else {
+                            safeMessage.error('未找到可下载的二维码')
+                        }
+                    } catch (error) {
+                        console.error('下载二维码失败:', error)
+                        safeMessage.error('下载失败: ' + error.message)
+                    }
+                }
+
+                const generateVoucherImage = async () => {
+                    generatingImage.value = true
+                    try {
+                        const response = await fetch(`/api/generate_voucher/${currentVoucher.value.voucher_id}`, {
+                            method: 'POST'
+                        })
+                        const data = await response.json()
+                        if (response.ok) {
+                            voucherImageUrl.value = data.voucher_image
+                            safeMessage.success('票据图片生成成功')
+                        } else {
+                            safeMessage.error('生成票据图片失败: ' + (data.error || '未知错误'))
+                        }
+                    } catch (error) {
+                        safeMessage.error('网络错误: ' + error.message)
+                        console.error('生成票据图片错误:', error)
+                    } finally {
+                        generatingImage.value = false
+                    }
+                }
+
+                const downloadVoucherImage = () => {
+                    if (voucherImageUrl.value) {
+                        const link = document.createElement('a')
+                        link.href = voucherImageUrl.value
+                        link.download = `voucher_${currentVoucher.value.voucher_id}.png`
+                        document.body.appendChild(link)
+                        link.click()
+                        document.body.removeChild(link)
+                        safeMessage.success('票据图片下载开始')
+                    } else {
+                        safeMessage.warning('请先生成票据图片')
+                    }
+                }
+
+                // 导出Excel
+                const exportExcel = async () => {
+                    try {
+                        if (vouchers.value.length === 0) {
+                            safeMessage.warning('没有数据可以导出')
+                            return
+                        }
+
+                        safeMessage.success('正在导出Excel文件...')
+                        
+                        const response = await fetch('/api/export', {
+                            method: 'GET'
+                        })
+                        
+                        if (response.ok) {
+                            // 获取文件名
+                            const contentDisposition = response.headers.get('Content-Disposition')
+                            let filename = 'vouchers_export.xlsx'
+                            if (contentDisposition) {
+                                const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
+                                if (match) {
+                                    filename = match[1].replace(/['"]/g, '')
+                                }
+                            }
+                            
+                            // 下载文件
+                            const blob = await response.blob()
+                            const url = window.URL.createObjectURL(blob)
+                            const link = document.createElement('a')
+                            link.href = url
+                            link.download = filename
+                            document.body.appendChild(link)
+                            link.click()
+                            document.body.removeChild(link)
+                            window.URL.revokeObjectURL(url)
+                            
+                            safeMessage.success('Excel文件导出成功')
+                        } else {
+                            const errorData = await response.json().catch(() => ({}))
+                            safeMessage.error('导出失败: ' + (errorData.error || '服务器错误'))
+                        }
+                    } catch (error) {
+                        console.error('导出错误:', error)
+                        safeMessage.error('导出失败: ' + error.message)
+                    }
+                }
+
+                // 导入Excel
+                const importExcel = async (event) => {
+                    const file = event.target.files[0]
+                    if (!file) return
+                    
+                    try {
+                        if (!file.name.toLowerCase().match(/\.(xlsx|xls)$/)) {
+                            safeMessage.error('请选择Excel文件（.xlsx或.xls格式）')
+                            return
+                        }
+                        
+                        const formData = new FormData()
+                        formData.append('file', file)
+                        
+                        safeMessage.success('正在导入Excel文件...')
+                        
+                        const response = await fetch('/api/import', {
+                            method: 'POST',
+                            body: formData
+                        })
+                        
+                        const data = await response.json()
+                        
+                        if (response.ok) {
+                            await loadData()  // 刷新数据
+                            
+                            let message = `导入成功！共导入 ${data.imported_count} 条记录，当前总数 ${data.total_count} 条`
+                            
+                            if (data.warnings) {
+                                safeMessage.warning(message + '\n' + data.warnings)
+                            } else {
+                                safeMessage.success(message)
+                            }
+                            
+                            // 如果有错误详情，在控制台输出
+                            if (data.error_details && data.error_details.length > 0) {
+                                console.warn('导入时跳过的行:', data.error_details)
+                            }
+                        } else {
+                            safeMessage.error('导入失败: ' + (data.error || '未知错误'))
+                        }
+                    } catch (error) {
+                        console.error('导入错误:', error)
+                        safeMessage.error('导入失败: ' + error.message)
+                    } finally {
+                        // 清空文件输入，允许重复选择同一文件
+                        event.target.value = ''
+                    }
+                }
+                
+                const handleSizeChange = (newSize) => {
+                    pageSize.value = newSize
+                    currentPage.value = 1
+                }
+                
+                const handleCurrentChange = (newPage) => {
+                    currentPage.value = newPage
+                }
+                
+                // 生命周期
+                onMounted(() => {
+                    setTimeout(() => {
+                        loadData()
+                    }, 100)
+                })
+                
+                return {
+                    vouchers,
+                    loading,
+                    saving,
+                    showAdd,
+                    showEdit,
+                    showQR,
+                    searchText,
+                    title,
+                    currentPage,
+                    pageSize,
+                    totalPages,
+                    newVoucher,
+                    editingVoucher,
+                    currentVoucher,
+                    verifyLink,
+                    qrCanvas,
+                    fileInput,
+                    voucherImageUrl,
+                    generatingImage,
+                    filteredVouchers,
+                    paginatedVouchers,
+                    totalVouchers,
+                    unusedVouchers,
+                    usedVouchers,
+                    totalAmount,
+                    usedAmount,
+                    unusedAmount,
+                    loadData,
+                    refreshData,
+                    addVoucher,
+                    editVoucher,
+                    updateVoucher,
+                    confirmDelete,
+                    deleteVoucher,
+                    toggleStatus,
+                    showQRCode,
+                    copyLink,
+                    downloadQR,
+                    generateVoucherImage,
+                    downloadVoucherImage,
+                    exportExcel,
+                    importExcel,
+                    handleSizeChange,
+                    handleCurrentChange
+                }
+            }
+        })
+        
+        // 直接挂载Vue应用
+        app.use(ElementPlus).mount('#app')
+        console.log('Vue应用已挂载')
+</script>
+</body>
+</html>

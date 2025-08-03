@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  voucherlite:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      platforms:
+        - linux/amd64  # 强制使用 x86_64 架构
+    image: voucherlite:latest
+    container_name: voucherlite
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    volumes:
+      # 数据持久化
+      - ./data:/app/data
+      - ./vouchers:/app/vouchers
+      # 可选：挂载Excel文件（如果需要外部编辑）
+      - ./vouchers.xlsx:/app/vouchers.xlsx
+    environment:
+      - PYTHONUNBUFFERED=1
+      - FLASK_ENV=production
+      - TZ=Asia/Shanghai
+    networks:
+      - voucherlite-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  voucherlite-network:
+    driver: bridge
+
+volumes:
+  voucherlite-data:
+    driver: local 

@@ -1,0 +1,200 @@
+# VoucherLite 项目 .gitignore
+# 金潮男装供应链 - 电子凭证管理系统
+
+# ===== Python =====
+# 字节码文件
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 发布包
+*.so
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# 单元测试
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# Pipenv
+Pipfile.lock
+
+# virtualenv / venv
+# 注意：便携式部署时需要包含venv文件夹
+# 使用 create_portable.bat 创建便携包时会生成venv/
+venv/
+ENV/
+env/
+.venv/
+
+# ===== 项目特定文件 =====
+# Excel数据文件（保留示例，忽略实际数据）
+vouchers.xlsx
+vouchers_backup*.xlsx
+vouchers_export_*.xlsx
+导入模板.xlsx
+
+# 生成的凭证文件
+vouchers/
+*.png
+*.jpg
+*.jpeg
+!static/
+
+# 临时文件
+temp_*.txt
+temp_*.xlsx
+*.tmp
+*.log
+
+# ===== 系统文件 =====
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msm
+*.msp
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ===== 编辑器 =====
+# VSCode
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# PyCharm
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# ===== 开发工具 =====
+# pytest
+.pytest_cache/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Flask
+instance/
+.webassets-cache
+
+# ===== 其他 =====
+# 环境变量文件
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 压缩文件
+*.zip
+*.tar.gz
+*.rar
+
+# 文档生成
+docs/_build/
+
+# 备份文件
+*.bak
+*.backup
+
+# 测试文件（临时）
+test_*.py
+*_test.py
+test_output/
+
+# ===== 保留的重要文件 =====
+# 确保这些文件被跟踪
+!requirements.txt
+!config.py
+!app.py
+!generate.py
+!*.bat
+!*.md
+!static/js/
+!readme.md
+!README.md
+
+# 不再需要防火墙配置文件
+setup_firewall.bat
+
+# install脚本不再创建run.bat，使用start_windows.bat统一启动
+run.bat 
+
+# python目录
+python/
