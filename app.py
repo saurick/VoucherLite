@@ -530,36 +530,83 @@ def use_voucher(voucher_id):
 def export_excel():
     """导出Excel文件"""
     try:
+        print("=== 开始导出Excel ===")
         df = load_data()
+        print(f"加载数据: {len(df)} 行")
+        
         if df.empty:
+            print("错误: 没有数据可以导出")
             return jsonify({"error": "没有数据可以导出"}), 400
         
         # 生成导出文件名（包含时间戳）
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         export_filename = f"vouchers_export_{timestamp}.xlsx"
         export_path = os.path.join(os.getcwd(), export_filename)
+        print(f"导出文件路径: {export_path}")
+        
+        # 确保目录存在并有写入权限
+        try:
+            # 测试写入权限
+            test_file = os.path.join(os.getcwd(), f"test_write_{timestamp}.tmp")
+            with open(test_file, 'w') as f:
+                f.write('test')
+            os.remove(test_file)
+            print("写入权限检查: 通过")
+        except Exception as e:
+            print(f"写入权限检查失败: {e}")
+            return jsonify({"error": f"目录写入权限不足: {str(e)}"}), 500
         
         # 导出到临时文件
-        df.to_excel(export_path, index=False)
+        try:
+            print("开始写入Excel文件...")
+            df.to_excel(export_path, index=False, engine='openpyxl')
+            print(f"Excel文件写入成功，文件大小: {os.path.getsize(export_path)} bytes")
+        except Exception as e:
+            print(f"Excel写入失败: {e}")
+            return jsonify({"error": f"Excel文件生成失败: {str(e)}"}), 500
         
-        def remove_file(response):
-            """响应后删除临时文件"""
-            try:
-                os.remove(export_path)
-            except Exception:
-                pass
+        # 验证文件是否存在
+        if not os.path.exists(export_path):
+            print("错误: Excel文件未生成")
+            return jsonify({"error": "Excel文件生成失败"}), 500
+        
+        # 发送文件
+        try:
+            print("开始发送文件...")
+            response = send_file(
+                export_path, 
+                as_attachment=True, 
+                download_name=export_filename,
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+            
+            # 设置响应后删除文件的回调
+            def cleanup_file():
+                try:
+                    if os.path.exists(export_path):
+                        os.remove(export_path)
+                        print(f"清理临时文件: {export_path}")
+                except Exception as cleanup_error:
+                    print(f"清理文件失败: {cleanup_error}")
+            
+            response.call_on_close(cleanup_file)
+            print("文件发送成功")
             return response
-        
-        # 发送文件并在响应后删除
-        response = send_file(export_path, 
-                           as_attachment=True, 
-                           download_name=export_filename,
-                           mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response.call_on_close(lambda: os.remove(export_path) if os.path.exists(export_path) else None)
-        
-        return response
+            
+        except Exception as e:
+            print(f"文件发送失败: {e}")
+            # 清理失败的文件
+            try:
+                if os.path.exists(export_path):
+                    os.remove(export_path)
+            except:
+                pass
+            return jsonify({"error": f"文件发送失败: {str(e)}"}), 500
         
     except Exception as e:
+        print(f"导出异常: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": f"导出失败: {str(e)}"}), 500
 
 # Excel导入API

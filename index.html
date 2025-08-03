@@ -382,9 +382,9 @@
                     if (!searchText.value) return vouchers.value || []
                     const search = searchText.value.toLowerCase()
                     return (vouchers.value || []).filter(v => 
-                        (v.customer || '').toLowerCase().includes(search) ||
-                        (v.sku || '').toLowerCase().includes(search) ||
-                        (v.voucher_id || '').toLowerCase().includes(search)
+                        String(v.customer || '').toLowerCase().includes(search) ||
+                        String(v.sku || '').toLowerCase().includes(search) ||
+                        String(v.voucher_id || '').toLowerCase().includes(search)
                     )
                 })
                 
