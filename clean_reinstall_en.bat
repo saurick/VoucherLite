@@ -73,21 +73,28 @@ if errorlevel 1 (
     exit /b 1
 )
 
-python -c "print('Python environment OK')" >nul 2>&1
+REM Set Python command based on available Python installation
+if exist "python\python.exe" (
+    set PYTHON_CMD=python\python.exe
+) else (
+    set PYTHON_CMD=python
+)
+
+%PYTHON_CMD% -c "print('Python environment OK')" >nul 2>&1
 if errorlevel 1 (
     echo [ERROR] Python test failed
     pause
     exit /b 1
 )
 
-python -c "import flask; print('Flask OK')" >nul 2>&1
+%PYTHON_CMD% -c "import flask; print('Flask OK')" >nul 2>&1
 if errorlevel 1 (
     echo [ERROR] Flask test failed
     pause
     exit /b 1
 )
 
-python -c "from config import HOST, PORT; print('Config OK')" >nul 2>&1
+%PYTHON_CMD% -c "from config import HOST, PORT; print('Config OK')" >nul 2>&1
 if errorlevel 1 (
     echo [ERROR] Config test failed
     pause
@@ -105,7 +112,7 @@ echo [TEST] Now starting application for final test...
 echo Press any key to start test...
 pause
 
-python app.py
+%PYTHON_CMD% app.py
 
 echo.
 echo Reinstall and test complete!

@@ -41,10 +41,21 @@ set PYTHONIOENCODING=utf-8
 REM Set Python input/output encoding to UTF-8 to avoid character garbling
 
 REM =============================================
-REM Step 3: Display system information
+REM Step 3: Set Python command and display system information
 REM =============================================
+echo [3] Setting Python command...
+
+REM Check if local Python exists (from install script)
+if exist "python\python.exe" (
+    set PYTHON_CMD=python\python.exe
+    echo [INFO] Using local Python: python\python.exe
+) else (
+    set PYTHON_CMD=python
+    echo [INFO] Using system Python: python
+)
+
 echo [3] Displaying Python version...
-python --version
+%PYTHON_CMD% --version
 REM Display current Python version information
 
 echo [4] Displaying current directory...
@@ -73,7 +84,7 @@ echo.
 REM Get local IP address and automatically open browser
 echo [STARTUP] Getting local IP address...
 REM Read HOST configuration from config.py file to get local IP address
-for /f "tokens=2 delims=:" %%a in ('python -c "from config import HOST; print('IP:' + HOST)"') do set LOCAL_IP=%%a
+for /f "tokens=2 delims=:" %%a in ('%PYTHON_CMD% -c "from config import HOST; print('IP:' + HOST)"') do set LOCAL_IP=%%a
 set LOCAL_IP=%LOCAL_IP: =%
 REM Remove spaces from IP address
 
@@ -86,7 +97,7 @@ start "" cmd /c "timeout /t 3 >nul & start http://%LOCAL_IP%:5001"
 
 REM Start Flask application server
 REM This is the main server process that will run until user presses Ctrl+C to stop
-python app.py
+%PYTHON_CMD% app.py
 
 REM =============================================
 REM Cleanup and exit

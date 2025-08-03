@@ -109,6 +109,7 @@ if errorlevel 1 (
     set PYTHON_CMD=python\python.exe
     set PIP_CMD=python\Scripts\pip.exe
     set USE_VIRTUALENV=1
+    goto python_ready
 ) else (
     echo [OK] 使用系统Python
     python --version
@@ -119,6 +120,7 @@ if errorlevel 1 (
 
 :python_ready
 echo Python配置完成: %PYTHON_CMD%
+%PYTHON_CMD% --version
 
 echo.
 

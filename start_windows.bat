@@ -41,10 +41,21 @@ set PYTHONIOENCODING=utf-8
 REM 设置Python输入输出编码为UTF-8，避免中文乱码
 
 REM =============================================
-REM 步骤3：显示系统信息
+REM 步骤3：设置Python命令并显示系统信息
 REM =============================================
+echo [3] 设置Python命令...
+
+REM 检查是否存在本地Python（来自安装脚本）
+if exist "python\python.exe" (
+    set PYTHON_CMD=python\python.exe
+    echo [信息] 使用本地Python: python\python.exe
+) else (
+    set PYTHON_CMD=python
+    echo [信息] 使用系统Python: python
+)
+
 echo [3] 显示Python版本...
-python --version
+%PYTHON_CMD% --version
 REM 显示当前使用的Python版本信息
 
 echo [4] 显示当前目录...
@@ -73,7 +84,7 @@ echo.
 REM 获取本地IP地址并自动打开浏览器
 echo [启动] 获取本地IP地址...
 REM 从config.py文件中读取HOST配置，获取本地IP地址
-for /f "tokens=2 delims=:" %%a in ('python -c "from config import HOST; print('IP:' + HOST)"') do set LOCAL_IP=%%a
+for /f "tokens=2 delims=:" %%a in ('%PYTHON_CMD% -c "from config import HOST; print('IP:' + HOST)"') do set LOCAL_IP=%%a
 set LOCAL_IP=%LOCAL_IP: =%
 REM 去除IP地址中的空格
 
@@ -86,7 +97,7 @@ start "" cmd /c "timeout /t 3 >nul & start http://%LOCAL_IP%:5001"
 
 REM 启动Flask应用服务器
 REM 这是主要的服务器进程，会一直运行直到用户按Ctrl+C停止
-python app.py
+%PYTHON_CMD% app.py
 
 REM =============================================
 REM 清理和退出
