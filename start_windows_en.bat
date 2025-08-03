@@ -45,13 +45,18 @@ REM Step 3: Set Python command and display system information
 REM =============================================
 echo [3] Setting Python command...
 
-REM Check if local Python exists (from install script)
-if exist "python\python.exe" (
-    set PYTHON_CMD=python\python.exe
-    echo [INFO] Using local Python: python\python.exe
+REM Priority: Use virtual environment Python first, then local Python, then system Python
+if exist "venv\Scripts\python.exe" (
+    set PYTHON_CMD=venv\Scripts\python.exe
+    echo [INFO] Using virtual environment Python: venv\Scripts\python.exe
 ) else (
-    set PYTHON_CMD=python
-    echo [INFO] Using system Python: python
+    if exist "python\python.exe" (
+        set PYTHON_CMD=python\python.exe
+        echo [INFO] Using local Python: python\python.exe
+    ) else (
+        set PYTHON_CMD=python
+        echo [INFO] Using system Python: python
+    )
 )
 
 echo [3] Displaying Python version...

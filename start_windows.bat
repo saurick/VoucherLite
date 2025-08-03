@@ -45,13 +45,18 @@ REM 步骤3：设置Python命令并显示系统信息
 REM =============================================
 echo [3] 设置Python命令...
 
-REM 检查是否存在本地Python（来自安装脚本）
-if exist "python\python.exe" (
-    set PYTHON_CMD=python\python.exe
-    echo [信息] 使用本地Python: python\python.exe
+REM 优先级：先使用虚拟环境Python，再使用本地Python，最后使用系统Python
+if exist "venv\Scripts\python.exe" (
+    set PYTHON_CMD=venv\Scripts\python.exe
+    echo [信息] 使用虚拟环境Python: venv\Scripts\python.exe
 ) else (
-    set PYTHON_CMD=python
-    echo [信息] 使用系统Python: python
+    if exist "python\python.exe" (
+        set PYTHON_CMD=python\python.exe
+        echo [信息] 使用本地Python: python\python.exe
+    ) else (
+        set PYTHON_CMD=python
+        echo [信息] 使用系统Python: python
+    )
 )
 
 echo [3] 显示Python版本...

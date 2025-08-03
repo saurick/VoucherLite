@@ -73,11 +73,15 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM 根据可用的Python安装设置Python命令
-if exist "python\python.exe" (
-    set PYTHON_CMD=python\python.exe
+REM 根据可用的Python安装设置Python命令 - 优先级：venv > local > system
+if exist "venv\Scripts\python.exe" (
+    set PYTHON_CMD=venv\Scripts\python.exe
 ) else (
-    set PYTHON_CMD=python
+    if exist "python\python.exe" (
+        set PYTHON_CMD=python\python.exe
+    ) else (
+        set PYTHON_CMD=python
+    )
 )
 
 %PYTHON_CMD% -c "print('Python environment OK')" >nul 2>&1

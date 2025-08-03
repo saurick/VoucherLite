@@ -73,11 +73,15 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM Set Python command based on available Python installation
-if exist "python\python.exe" (
-    set PYTHON_CMD=python\python.exe
+REM Set Python command based on available Python installation - priority: venv > local > system
+if exist "venv\Scripts\python.exe" (
+    set PYTHON_CMD=venv\Scripts\python.exe
 ) else (
-    set PYTHON_CMD=python
+    if exist "python\python.exe" (
+        set PYTHON_CMD=python\python.exe
+    ) else (
+        set PYTHON_CMD=python
+    )
 )
 
 %PYTHON_CMD% -c "print('Python environment OK')" >nul 2>&1
