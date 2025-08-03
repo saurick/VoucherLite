@@ -126,6 +126,7 @@
             <el-table-column prop="price" label="金额" width="100" align="right">
                 <template #default="scope">¥{{ scope.row.price }}</template>
             </el-table-column>
+            <el-table-column prop="date" label="创建日期" width="120" align="center" show-overflow-tooltip></el-table-column>
             <el-table-column prop="status" label="状态" width="100" align="center">
                 <template #default="scope">
                     <el-tag :type="scope.row.status === '已使用' ? 'danger' : 'success'">
@@ -176,6 +177,16 @@
         <!-- 新增凭证弹窗 -->
         <el-dialog v-model="showAdd" title="新增凭证" width="500px">
             <el-form :model="newVoucher" label-width="80px">
+                <el-form-item label="创建日期">
+                    <el-date-picker 
+                        v-model="newVoucher.date" 
+                        type="date" 
+                        placeholder="选择创建日期"
+                        format="YYYY-MM-DD"
+                        value-format="YYYY-MM-DD"
+                        style="width: 100%;">
+                    </el-date-picker>
+                </el-form-item>
                 <el-form-item label="客户姓名">
                     <el-input v-model="newVoucher.customer" placeholder="请输入客户姓名"></el-input>
                 </el-form-item>
@@ -200,6 +211,16 @@
             <el-form :model="editingVoucher" label-width="80px">
                 <el-form-item label="凭证号">
                     <el-input v-model="editingVoucher.voucher_id" disabled></el-input>
+                </el-form-item>
+                <el-form-item label="创建日期">
+                    <el-date-picker 
+                        v-model="editingVoucher.date" 
+                        type="date" 
+                        placeholder="选择创建日期"
+                        format="YYYY-MM-DD"
+                        value-format="YYYY-MM-DD"
+                        style="width: 100%;">
+                    </el-date-picker>
                 </el-form-item>
                 <el-form-item label="客户姓名">
                     <el-input v-model="editingVoucher.customer" placeholder="请输入客户姓名"></el-input>
@@ -284,6 +305,7 @@
                 const generatingImage = ref(false)
                 
                 const newVoucher = ref({
+                    date: new Date().toISOString().split('T')[0], // 默认为今天
                     customer: '',
                     sku: '',
                     qty: 1,
@@ -385,7 +407,8 @@
                     return (vouchers.value || []).filter(v => 
                         String(v.customer || '').toLowerCase().includes(search) ||
                         String(v.sku || '').toLowerCase().includes(search) ||
-                        String(v.voucher_id || '').toLowerCase().includes(search)
+                        String(v.voucher_id || '').toLowerCase().includes(search) ||
+                        String(v.date || '').toLowerCase().includes(search)
                     )
                 })
                 
@@ -454,7 +477,13 @@
                         
                         if (response.ok) {
                             showAdd.value = false
-                            newVoucher.value = { customer: '', sku: '', qty: 1, price: 0 }
+                            newVoucher.value = { 
+                                date: new Date().toISOString().split('T')[0], 
+                                customer: '', 
+                                sku: '', 
+                                qty: 1, 
+                                price: 0 
+                            }
                             await loadData()
                             safeMessage.success('凭证添加成功')
                         } else {
