@@ -12,6 +12,7 @@ If you encounter encoding issues or character display problems on some Windows s
 ### 🔧 Utility Scripts
 - **`clean_reinstall_en.bat`** - English version of clean reinstall script
 - **`verify_install_en.bat`** - English version of installation verification script
+- **`debug_detailed_en.bat`** - English version of detailed debug script
 
 ### 📋 Usage Instructions
 
@@ -39,6 +40,12 @@ verify_install_en.bat
 clean_reinstall_en.bat
 ```
 
+#### 5. Debug Issues (Troubleshooting)
+```batch
+# Detailed debugging for startup problems
+debug_detailed_en.bat
+```
+
 ### 🔧 Features
 - **100% ASCII compatible** - No special characters that cause encoding issues
 - **Same functionality** - Identical features as Chinese versions
@@ -64,9 +71,18 @@ Use these English scripts if you encounter:
 #### start_windows_en.bat
 - Activates Python virtual environment
 - Sets proper environment variables
+- Displays Python version and directory info
 - Checks system files
-- Detects network configuration
+- Gets local IP address and automatically opens browser
 - Starts VoucherLite server
+
+#### debug_detailed_en.bat
+- Step-by-step debugging for startup issues
+- Tests virtual environment activation
+- Validates config.py execution
+- Tests app.py import functionality
+- Checks Flask routes configuration
+- Attempts controlled app.py startup
 
 ### 🎯 Quick Start
 1. Download or clone the project

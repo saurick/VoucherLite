@@ -26,8 +26,8 @@
    ├── config.py                 # 系统配置文件
    ├── index.html                # 管理界面
    ├── requirements.txt          # Python依赖列表
-   ├── install_windows.bat       # 一键安装脚本 ⭐
-   ├── start_windows.bat         # 一键启动脚本 ⭐
+   ├── install_windows.bat（或者en版本）       # 一键安装脚本 ⭐
+   ├── start_windows.bat（或者en版本）         # 一键启动脚本 ⭐
    ├── verify_install.bat        # 安装验证脚本 ⭐
    └── static/                   # 静态资源目录
    ```
@@ -37,7 +37,7 @@
 1. **运行安装脚本**
    ```
    📁 打开VoucherLite项目文件夹
-   🖱️ 双击 install_windows.bat
+   🖱️ 双击 install_windows.bat（或者en版本）
    ⏳ 等待安装完成（约3-5分钟）
    ```
 
@@ -69,7 +69,7 @@
 
 1. **运行启动脚本**
    ```
-   🖱️ 双击 start_windows.bat
+   🖱️ 双击 start_windows.bat（或者en版本）
    🌐 系统会自动打开浏览器显示管理界面
    ```
 
@@ -96,7 +96,7 @@
 
 ## 🔧 批处理脚本详解
 
-### install_windows.bat - 一键安装脚本
+### install_windows.bat（或者en版本） - 一键安装脚本
 
 **功能说明:**
 - 自动检测Python环境，如无则下载Python 3.11便携版
@@ -112,7 +112,7 @@
 
 **运行时间:** 约3-5分钟（取决于网络速度）
 
-### start_windows.bat - 一键启动脚本
+### start_windows.bat（或者en版本） - 一键启动脚本
 
 **功能说明:**
 - 激活Python虚拟环境
@@ -170,7 +170,7 @@
 
 ### 安装问题
 
-1. **install_windows.bat运行失败**
+1. **install_windows.bat（或者en版本）运行失败**
    ```
    可能原因：
    - 网络连接问题，无法下载Python
@@ -195,7 +195,7 @@
 
 ### 启动问题
 
-1. **start_windows.bat闪退**
+1. **start_windows.bat（或者en版本）闪退**
    ```
    可能原因：
    - 虚拟环境未正确创建
@@ -203,7 +203,7 @@
    
    解决方案：
    1. 运行 verify_install.bat 检查状态
-   2. 重新运行 install_windows.bat
+   2. 重新运行 install_windows.bat（或者en版本）
    ```
 
 2. **端口5001被占用**
@@ -279,7 +279,7 @@
 
 ### 每日启动
 ```
-1. 🖱️ 双击 start_windows.bat
+1. 🖱️ 双击 start_windows.bat（或者en版本）
 2. ⏳ 等待浏览器自动打开
 3. 🎉 开始使用系统
 ```
@@ -293,8 +293,8 @@
 ### 重新安装
 ```
 1. 删除 venv 和 python 文件夹
-2. 🖱️ 双击 install_windows.bat
-3. 🖱️ 双击 start_windows.bat
+2. 🖱️ 双击 install_windows.bat（或者en版本）
+3. 🖱️ 双击 start_windows.bat（或者en版本）
 ```
 
 ## 📞 技术支持
@@ -348,4 +348,4 @@ Press CTRL+C to quit
 - 📱 手机扫描二维码验证
 - 🏢 为金潮男装供应链提供数字化服务
 
-> **提示**: 建议将start_windows.bat创建桌面快捷方式，方便日常使用！
+> **提示**: 建议将start_windows.bat（或者en版本）创建桌面快捷方式，方便日常使用！
