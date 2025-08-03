@@ -80,6 +80,7 @@
                 <el-button type="primary" @click="showAdd = true">➕ 新增凭证</el-button>
                 <el-button @click="refreshData">🔄 刷新数据</el-button>
                 <el-button type="success" @click="exportExcel">📤 导出Excel</el-button>
+                <!-- <el-button type="info" @click="downloadTemplate">📋 下载模板</el-button> -->
                 <el-button type="warning" @click="$refs.fileInput.click()">📥 导入Excel</el-button>
                 <input 
                     ref="fileInput" 
@@ -564,34 +565,34 @@
                     
                     try {
                         // 尝试使用ElMessageBox，如果失败则降级到原生confirm
-                        let confirmed = false
-                        try {
-                            if (typeof ElMessageBox !== 'undefined') {
-                                await ElMessageBox.confirm(
-                                    `确定要核销凭证 ${voucher.voucher_id} 吗？`,
-                                    '确认核销',
-                                    {
-                                        confirmButtonText: '确定',
-                                        cancelButtonText: '取消',
-                                        type: 'warning',
-                                    }
-                                )
-                                confirmed = true
-                            } else {
-                                // 降级处理
-                                confirmed = confirm(`确定要核销凭证 ${voucher.voucher_id} 吗？`)
-                            }
-                        } catch (confirmError) {
-                            if (confirmError === 'cancel') {
-                                return  // 用户取消
-                            }
-                            // ElMessageBox失败，使用原生confirm作为降级
-                            confirmed = confirm(`确定要核销凭证 ${voucher.voucher_id} 吗？`)
-                        }
+                        // let confirmed = false
+                        // try {
+                        //     if (typeof ElMessageBox !== 'undefined') {
+                        //         await ElMessageBox.confirm(
+                        //             `确定要核销凭证 ${voucher.voucher_id} 吗？`,
+                        //             '确认核销',
+                        //             {
+                        //                 confirmButtonText: '确定',
+                        //                 cancelButtonText: '取消',
+                        //                 type: 'warning',
+                        //             }
+                        //         )
+                        //         confirmed = true
+                        //     } else {
+                        //         // 降级处理
+                        //         confirmed = confirm(`确定要核销凭证 ${voucher.voucher_id} 吗？`)
+                        //     }
+                        // } catch (confirmError) {
+                        //     if (confirmError === 'cancel') {
+                        //         return  // 用户取消
+                        //     }
+                        //     // ElMessageBox失败，使用原生confirm作为降级
+                        //     confirmed = confirm(`确定要核销凭证 ${voucher.voucher_id} 吗？`)
+                        // }
                         
-                        if (!confirmed) {
-                            return  // 用户取消
-                        }
+                        // if (!confirmed) {
+                        //     return  // 用户取消
+                        // }
                         
                         const response = await fetch(`/api/use_voucher/${voucher.voucher_id}`, { 
                             method: 'POST' 
@@ -830,47 +831,155 @@
                 // 导出Excel
                 const exportExcel = async () => {
                     try {
+                        console.log('=== 前端开始导出Excel ===')
+                        
                         if (vouchers.value.length === 0) {
                             safeMessage.warning('没有数据可以导出')
                             return
                         }
 
+                        console.log(`当前有 ${vouchers.value.length} 条数据待导出`)
                         safeMessage.success('正在导出Excel文件...')
                         
                         const response = await fetch('/api/export', {
-                            method: 'GET'
+                            method: 'GET',
+                            // 添加超时设置
+                            signal: AbortSignal.timeout(30000) // 30秒超时
                         })
                         
+                        console.log('导出响应状态:', response.status, response.statusText)
+                        
                         if (response.ok) {
+                            console.log('响应头信息:', [...response.headers.entries()])
+                            
                             // 获取文件名
                             const contentDisposition = response.headers.get('Content-Disposition')
                             let filename = 'vouchers_export.xlsx'
+                            
                             if (contentDisposition) {
+                                console.log('Content-Disposition:', contentDisposition)
                                 const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
                                 if (match) {
                                     filename = match[1].replace(/['"]/g, '')
+                                    console.log('解析出的文件名:', filename)
                                 }
+                            } else {
+                                // 生成默认文件名
+                                const timestamp = new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '_')
+                                filename = `vouchers_export_${timestamp}.xlsx`
+                                console.log('使用默认文件名:', filename)
                             }
                             
+                            // 检查内容类型
+                            const contentType = response.headers.get('Content-Type')
+                            console.log('Content-Type:', contentType)
+                            
                             // 下载文件
+                            console.log('正在生成blob...')
                             const blob = await response.blob()
+                            console.log('Blob生成成功，大小:', blob.size, 'bytes, 类型:', blob.type)
+                            
+                            if (blob.size === 0) {
+                                throw new Error('导出的文件为空')
+                            }
+                            
+                            // 检查blob类型
+                            if (!blob.type.includes('spreadsheet') && !blob.type.includes('excel') && !blob.type.includes('octet-stream')) {
+                                console.warn('警告: blob类型可能不正确:', blob.type)
+                            }
+                            
                             const url = window.URL.createObjectURL(blob)
                             const link = document.createElement('a')
                             link.href = url
                             link.download = filename
-                            document.body.appendChild(link)
-                            link.click()
-                            document.body.removeChild(link)
-                            window.URL.revokeObjectURL(url)
+                            link.style.display = 'none'
                             
-                            safeMessage.success('Excel文件导出成功')
+                            document.body.appendChild(link)
+                            console.log('触发下载...')
+                            link.click()
+                            
+                            // 延迟清理，确保下载开始
+                            setTimeout(() => {
+                                document.body.removeChild(link)
+                                window.URL.revokeObjectURL(url)
+                                console.log('清理下载链接完成')
+                            }, 1000)
+                            
+                            safeMessage.success(`Excel文件导出成功: ${filename}`)
+                            console.log('=== 导出完成 ===')
+                            
                         } else {
-                            const errorData = await response.json().catch(() => ({}))
-                            safeMessage.error('导出失败: ' + (errorData.error || '服务器错误'))
+                            console.error('导出响应错误:', response.status, response.statusText)
+                            
+                            let errorMessage = '服务器错误'
+                            try {
+                                const errorData = await response.json()
+                                errorMessage = errorData.error || errorMessage
+                                console.error('错误详情:', errorData)
+                            } catch (parseError) {
+                                console.error('解析错误响应失败:', parseError)
+                                // 尝试获取文本响应
+                                try {
+                                    const errorText = await response.text()
+                                    console.error('错误响应文本:', errorText)
+                                    if (errorText) {
+                                        errorMessage = errorText.substring(0, 200) // 限制错误消息长度
+                                    }
+                                } catch (textError) {
+                                    console.error('获取错误文本失败:', textError)
+                                }
+                            }
+                            
+                            safeMessage.error('导出失败: ' + errorMessage)
                         }
                     } catch (error) {
-                        console.error('导出错误:', error)
-                        safeMessage.error('导出失败: ' + error.message)
+                        console.error('导出异常:', error)
+                        
+                        let errorMessage = error.message
+                        if (error.name === 'AbortError') {
+                            errorMessage = '导出超时，请稍后重试'
+                        } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                            errorMessage = '网络连接失败，请检查服务器状态'
+                        }
+                        
+                        safeMessage.error('导出失败: ' + errorMessage)
+                    }
+                }
+
+                // 下载Excel导入模板
+                const downloadTemplate = async () => {
+                    try {
+                        console.log('=== 下载Excel模板 ===')
+                        safeMessage.success('正在生成模板文件...')
+                        
+                        const response = await fetch('/api/template', {
+                            method: 'GET'
+                        })
+                        
+                        if (response.ok) {
+                            const blob = await response.blob()
+                            const url = window.URL.createObjectURL(blob)
+                            const link = document.createElement('a')
+                            link.href = url
+                            link.download = 'voucher_import_template.xlsx'
+                            link.style.display = 'none'
+                            
+                            document.body.appendChild(link)
+                            link.click()
+                            
+                            setTimeout(() => {
+                                document.body.removeChild(link)
+                                window.URL.revokeObjectURL(url)
+                            }, 1000)
+                            
+                            safeMessage.success('模板下载成功！请按照模板格式填写数据')
+                        } else {
+                            const errorData = await response.json().catch(() => ({}))
+                            safeMessage.error('模板下载失败: ' + (errorData.error || '服务器错误'))
+                        }
+                    } catch (error) {
+                        console.error('下载模板错误:', error)
+                        safeMessage.error('模板下载失败: ' + error.message)
                     }
                 }
 
@@ -982,6 +1091,7 @@
                     generateVoucherImage,
                     downloadVoucherImage,
                     exportExcel,
+                    downloadTemplate,
                     importExcel,
                     handleSizeChange,
                     handleCurrentChange

@@ -556,13 +556,102 @@ def export_excel():
             print(f"写入权限检查失败: {e}")
             return jsonify({"error": f"目录写入权限不足: {str(e)}"}), 500
         
+        # 数据预处理 - 确保数据类型正确
+        try:
+            print("开始数据预处理...")
+            print(f"原始数据结构: {df.dtypes}")
+            print(f"数据样本:\n{df.head()}")
+            
+            # 确保所有列都存在且数据类型正确
+            required_columns = ["voucher_id", "date", "customer", "sku", "qty", "price", "status", "used_date"]
+            for col in required_columns:
+                if col not in df.columns:
+                    print(f"添加缺失列: {col}")
+                    df[col] = ""
+            
+            # 数据类型转换和清理
+            df = df.copy()  # 避免修改原数据
+            df['voucher_id'] = df['voucher_id'].astype(str)
+            df['customer'] = df['customer'].astype(str) 
+            df['sku'] = df['sku'].astype(str)
+            df['date'] = df['date'].astype(str)
+            df['status'] = df['status'].astype(str)
+            df['used_date'] = df['used_date'].astype(str)
+            
+            # 数值类型处理
+            df['qty'] = pd.to_numeric(df['qty'], errors='coerce').fillna(0).astype(int)
+            df['price'] = pd.to_numeric(df['price'], errors='coerce').fillna(0.0)
+            
+            # 替换NaN值
+            df = df.fillna('')
+            
+            print(f"预处理后数据结构: {df.dtypes}")
+            print(f"预处理后数据样本:\n{df.head()}")
+            
+        except Exception as e:
+            print(f"数据预处理失败: {e}")
+            return jsonify({"error": f"数据预处理失败: {str(e)}"}), 500
+        
         # 导出到临时文件
         try:
             print("开始写入Excel文件...")
-            df.to_excel(export_path, index=False, engine='openpyxl')
-            print(f"Excel文件写入成功，文件大小: {os.path.getsize(export_path)} bytes")
+            
+            # 尝试不同的写入方式
+            try:
+                # 方法1: 使用openpyxl引擎
+                df.to_excel(export_path, index=False, engine='openpyxl')
+                print("使用openpyxl引擎写入成功")
+            except Exception as openpyxl_error:
+                print(f"openpyxl引擎失败: {openpyxl_error}")
+                try:
+                    # 方法2: 使用xlsxwriter引擎（如果可用）
+                    df.to_excel(export_path, index=False, engine='xlsxwriter')
+                    print("使用xlsxwriter引擎写入成功")
+                except Exception as xlsxwriter_error:
+                    print(f"xlsxwriter引擎也失败: {xlsxwriter_error}")
+                    # 方法3: 手动创建Excel文件
+                    import openpyxl
+                    from openpyxl import Workbook
+                    
+                    wb = Workbook()
+                    ws = wb.active
+                    ws.title = "Vouchers"
+                    
+                    # 写入标题行
+                    headers = list(df.columns)
+                    for col_idx, header in enumerate(headers, 1):
+                        ws.cell(row=1, column=col_idx, value=str(header))
+                    
+                    # 写入数据行
+                    for row_idx, (_, row) in enumerate(df.iterrows(), 2):
+                        for col_idx, value in enumerate(row, 1):
+                            # 确保值不是NaN或None
+                            if pd.isna(value) or value is None:
+                                cell_value = ""
+                            else:
+                                cell_value = str(value) if not isinstance(value, (int, float)) else value
+                            ws.cell(row=row_idx, column=col_idx, value=cell_value)
+                    
+                    wb.save(export_path)
+                    print("手动创建Excel文件成功")
+            
+            # 验证文件
+            if os.path.exists(export_path):
+                file_size = os.path.getsize(export_path)
+                print(f"Excel文件写入成功，文件大小: {file_size} bytes")
+                
+                if file_size == 0:
+                    print("错误: 生成的文件为空")
+                    return jsonify({"error": "生成的Excel文件为空"}), 500
+                    
+            else:
+                print("错误: Excel文件未生成")
+                return jsonify({"error": "Excel文件生成失败"}), 500
+                
         except Exception as e:
             print(f"Excel写入失败: {e}")
+            import traceback
+            traceback.print_exc()
             return jsonify({"error": f"Excel文件生成失败: {str(e)}"}), 500
         
         # 验证文件是否存在
@@ -736,6 +825,61 @@ def import_excel():
     except Exception as e:
         return jsonify({"error": f"导入失败: {str(e)}"}), 500
 
+# Excel模板下载API
+@app.route("/api/template", methods=["GET"])
+def download_template():
+    """下载Excel导入模板"""
+    try:
+        print("=== 生成Excel模板 ===")
+        
+        # 创建模板数据
+        template_data = {
+            "voucher_id": ["V001", "V002", "V003"],
+            "customer": ["张三", "李四", "王五"],
+            "sku": ["SKU001", "SKU002", "SKU003"],
+            "qty": [1, 2, 1],
+            "price": [100.00, 200.50, 150.00],
+            "date": ["2024-01-01", "2024-01-02", "2024-01-03"],
+            "status": ["未使用", "未使用", "未使用"],
+            "used_date": ["", "", ""]
+        }
+        
+        df = pd.DataFrame(template_data)
+        
+        # 生成模板文件名
+        template_filename = "voucher_import_template.xlsx"
+        template_path = os.path.join(os.getcwd(), template_filename)
+        
+        # 导出模板
+        df.to_excel(template_path, index=False, engine='openpyxl')
+        print(f"模板文件创建成功: {template_path}")
+        
+        # 发送模板文件
+        response = send_file(
+            template_path,
+            as_attachment=True,
+            download_name=template_filename,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        
+        # 设置清理回调
+        def cleanup_template():
+            try:
+                if os.path.exists(template_path):
+                    os.remove(template_path)
+                    print(f"清理模板文件: {template_path}")
+            except Exception as e:
+                print(f"清理模板文件失败: {e}")
+        
+        response.call_on_close(cleanup_template)
+        print("模板文件发送成功")
+        return response
+        
+    except Exception as e:
+        print(f"生成模板失败: {e}")
+        return jsonify({"error": f"生成模板失败: {str(e)}"}), 500
+
+
 if __name__ == "__main__":
     try:
         print("=== VoucherLite 服务器启动中 ===")
@@ -746,8 +890,10 @@ if __name__ == "__main__":
         print("- POST /api/add - 添加凭证")
         print("- POST /api/update/<id> - 更新凭证")
         print("- POST /api/delete/<id> - 删除凭证")
+        print("- POST /api/use_voucher/<id> - 核销凭证")
         print("- GET  /verify/<id> - 验证凭证")
         print("- GET  /api/export - 导出Excel文件")
+        print("- GET  /api/template - 下载Excel导入模板")
         print("- POST /api/import - 导入Excel文件")
         print("按 Ctrl+C 停止服务器")
         print("-" * 50)

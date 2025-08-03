@@ -61,10 +61,9 @@ env/
 
 # ===== 项目特定文件 =====
 # Excel数据文件（保留示例，忽略实际数据）
-vouchers.xlsx
-vouchers_backup*.xlsx
-vouchers_export_*.xlsx
-导入模板.xlsx
+*.xlsx
+*.xls
+
 
 # 生成的凭证文件
 vouchers/
