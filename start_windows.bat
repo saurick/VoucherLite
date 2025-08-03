@@ -26,12 +26,12 @@ call venv\Scripts\activate.bat
 REM 激活虚拟环境，确保使用正确的Python和依赖包
 
 if errorlevel 1 (
-    echo ❌ 虚拟环境激活失败！
+    echo [ERROR] 虚拟环境激活失败！
     echo 请先运行 install_windows.bat 安装环境
     pause
     exit /b 1
 )
-echo ✅ 虚拟环境激活成功
+echo [OK] 虚拟环境激活成功
 
 REM =============================================
 REM 步骤2：设置环境变量
@@ -55,9 +55,9 @@ REM =============================================
 REM 步骤4：检查必要文件
 REM =============================================
 echo [5] 检查关键文件...
-if exist "app.py" (echo ✅ app.py存在) else (echo ❌ app.py不存在 & goto :error)
-if exist "config.py" (echo ✅ config.py存在) else (echo ❌ config.py不存在 & goto :error)
-if exist "index.html" (echo ✅ index.html存在) else (echo ❌ index.html不存在 & goto :error)
+if exist "app.py" (echo [OK] app.py存在) else (echo [ERROR] app.py不存在 & goto :error)
+if exist "config.py" (echo [OK] config.py存在) else (echo [ERROR] config.py不存在 & goto :error)
+if exist "index.html" (echo [OK] index.html存在) else (echo [ERROR] index.html不存在 & goto :error)
 REM 检查Flask应用、配置文件、前端页面是否存在
 
 echo.
@@ -102,7 +102,7 @@ REM 错误处理
 REM =============================================
 :error
 echo.
-echo ❌ 启动失败：缺少必要文件
+echo [ERROR] 启动失败：缺少必要文件
 echo 请确保在正确的项目目录中运行此脚本
 echo 或者运行 install_windows.bat 重新安装
 pause

@@ -125,7 +125,7 @@ echo.
 REM 步骤2: 创建虚拟环境
 echo [安装] [2/7] 创建Python虚拟环境...
 if exist "venv\" (
-    echo ℹ️  虚拟环境已存在，跳过创建
+    echo [INFO] 虚拟环境已存在，跳过创建
 ) else (
     REM 检测是否需要使用virtualenv
     if defined USE_VIRTUALENV (
@@ -157,7 +157,7 @@ if exist "venv\" (
 echo.
 
 REM 步骤3: 激活虚拟环境
-echo [扳手] [3/7] 激活虚拟环境...
+echo [配置] [3/7] 激活虚拟环境...
 call venv\Scripts\activate.bat
 if errorlevel 1 (
     echo [ERROR] 虚拟环境激活失败
@@ -169,8 +169,8 @@ echo [OK] 虚拟环境激活成功
 echo.
 
 REM 步骤4: 安装依赖
-echo 📚 [4/7] 安装系统依赖包...
-echo ℹ️  使用国内镜像源加速下载...
+echo [安装] [4/7] 安装系统依赖包...
+echo [INFO] 使用国内镜像源加速下载...
 pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple/
 if errorlevel 1 (
     echo [WARN]  国内镜像失败，尝试默认源...
@@ -186,7 +186,7 @@ echo [OK] 依赖包安装完成
 echo.
 
 REM 步骤5: 测试系统配置
-echo 检测系统配置 [5/6]...
+echo [检测] 检测系统配置 [5/6]...
 set PYTHONIOENCODING=utf-8
 python config.py > temp_config.txt 2>&1
 if errorlevel 1 (
